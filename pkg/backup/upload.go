@@ -337,15 +337,15 @@ func (b *Backuper) uploadSingleBackupFile(ctx context.Context, localFile, remote
 		}
 	}()
 	retry := retrier.New(retrier.ExponentialBackoff(b.cfg.General.RetriesOnFailure, common.AddRandomJitter(b.cfg.General.RetriesDuration, b.cfg.General.RetriesJitter)), b)
-	err = retry.RunCtx(ctx, func(ctx context.Context) error {
-		return b.dst.PutFile(ctx, remoteFile, f, 0)
-	})
-	if err != nil {
-		return 0, errors.Wrapf(err, "can't upload %s", remoteFile)
-	}
 	info, err := os.Stat(localFile)
 	if err != nil {
 		return 0, fmt.Errorf("can't stat %s", localFile)
+	}
+	err = retry.RunCtx(ctx, func(ctx context.Context) error {
+		return b.dst.PutFile(ctx, remoteFile, f, info.Size())
+	})
+	if err != nil {
+		return 0, errors.Wrapf(err, "can't upload %s", remoteFile)
 	}
 	if b.resume {
 		b.resumableState.AppendToState(remoteFile, info.Size())
